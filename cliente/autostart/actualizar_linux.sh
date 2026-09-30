@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
+# Descarga la última versión del repo y la instala en /opt con
+# instalar_linux.sh --solo-codigo. Se corre desde tu usuario (no con sudo):
+# el git se hace con el dueño del checkout y solo la instalación pide sudo.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$(dirname "$SCRIPT_DIR")"
 REPO_DIR="$(cd "$APP_DIR/.." && pwd)"
-PYTHON="${PYTHON:-python3}"
 SERVICE_NAME="biblioteca-kiosko"
 
-PIP_ERROR_LOG="$(mktemp)"
-trap 'rm -f "$PIP_ERROR_LOG"' EXIT
+if [[ $EUID -eq 0 ]]; then
+    echo "No corras este script con sudo: el git se hace con tu usuario y la instalación pide sudo cuando hace falta."
+    exit 1
+fi
 
 echo "=== Actualizando Biblioteca Kiosko ==="
 
@@ -42,38 +46,23 @@ else
 fi
 
 echo ""
-echo "Actualizando dependencias..."
-if ! "$PYTHON" -m pip install -q -r "$APP_DIR/requirements.txt" 2>"$PIP_ERROR_LOG"; then
-    if grep -q "externally-managed-environment" "$PIP_ERROR_LOG"; then
-        echo "El entorno de Python es externally-managed (PEP 668) — reintentando con --break-system-packages."
-        echo "Esta PC es de uso dedicado para el kiosko, así que instalar en el Python del sistema es seguro."
-        "$PYTHON" -m pip install -q --break-system-packages -r "$APP_DIR/requirements.txt"
-    else
-        cat "$PIP_ERROR_LOG" >&2
-        exit 1
-    fi
+if ! systemctl list-unit-files 2>/dev/null | grep -q "^${SERVICE_NAME}.service"; then
+    echo "El kiosko no está instalado en esta PC. Para instalarlo:"
+    echo "  sudo $SCRIPT_DIR/instalar_linux.sh --usuario-ui USUARIO"
+    exit 0
 fi
 
-echo ""
-if systemctl is-enabled "$SERVICE_NAME" &>/dev/null; then
-    if [[ -t 0 ]]; then
-        read -r -p "¿Reiniciar el servicio ahora para aplicar los cambios? (s/n) " RESPUESTA
-    else
-        RESPUESTA="n"
-        echo "Ejecución sin terminal (p. ej. cron) — no se reinicia automáticamente."
-    fi
-    if [[ "$RESPUESTA" == "s" || "$RESPUESTA" == "S" ]]; then
-        echo "Reiniciando servicio systemd..."
-        sudo systemctl restart "$SERVICE_NAME"
-        echo "Servicio reiniciado con la nueva versión."
-    else
-        echo "Reinicio pendiente. Ejecuta 'sudo systemctl restart $SERVICE_NAME' cuando quieras aplicar los cambios."
-    fi
-elif pgrep -f "$APP_DIR/main.py" &>/dev/null; then
-    echo "AVISO: la app está corriendo vía autostart de sesión (sin systemd)."
-    echo "Cierra la app y vuelve a abrirla (o reinicia sesión) para aplicar los cambios."
+# Instalar reinicia el servicio, que cierra la sesión activa del estudiante.
+if [[ -t 0 ]]; then
+    read -r -p "¿Instalar ahora la nueva versión? Reinicia el servicio y cierra la sesión activa. (s/n) " RESPUESTA
 else
-    echo "Actualización lista. Se aplicará la próxima vez que inicie la app."
+    RESPUESTA="n"
+    echo "Ejecución sin terminal (p. ej. cron) — no se instala automáticamente."
+fi
+if [[ "$RESPUESTA" == "s" || "$RESPUESTA" == "S" ]]; then
+    sudo "$SCRIPT_DIR/instalar_linux.sh" --solo-codigo
+else
+    echo "Instalación pendiente. Ejecuta 'sudo $SCRIPT_DIR/instalar_linux.sh --solo-codigo' cuando quieras aplicarla."
 fi
 
 echo ""

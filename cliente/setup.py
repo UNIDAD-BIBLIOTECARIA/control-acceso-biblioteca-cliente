@@ -1,4 +1,5 @@
 """Script de configuración inicial — ejecutar una vez por PC hija."""
+import argparse
 import configparser
 import getpass
 import os
@@ -65,11 +66,15 @@ def preguntar_ca_cert(server_url: str) -> str:
     pública, o si se está usando http:// (desarrollo/riesgo asumido)."""
     if urlparse(server_url).scheme != "https":
         return ""
+    # instalar_linux.sh copia el ca.pem al directorio de datos antes de
+    # llamar a este script: el usuario del servicio no puede leer uno que
+    # esté en el home de quien instala.
+    ca_en_datos = DATA_DIR / "ca.pem"
     return preguntar(
         "Ruta al certificado de la CA interna (ca.pem) para validar el "
         "servidor — dejalo vacío si el servidor usa un certificado de una "
         "CA pública reconocida",
-        "",
+        ca_en_datos.name if ca_en_datos.exists() else "",
     )
 
 
@@ -153,6 +158,14 @@ Categories=Utility;
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--sin-autostart", action="store_true",
+        help="no ofrecer el autostart de usuario (lo usa instalar_linux.sh, "
+             "que instala el servicio y la UI a nivel de sistema)",
+    )
+    args = parser.parse_args()
+
     print("=== Configuración de PC Biblioteca ===\n")
     DATA_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
 
@@ -198,7 +211,7 @@ def main():
     print("  Base de datos local inicializada")
 
     # Autostart
-    instalar = preguntar("\n¿Instalar autostart? (s/n)", "s").lower()
+    instalar = "n" if args.sin_autostart else preguntar("\n¿Instalar autostart? (s/n)", "s").lower()
     if instalar == "s":
         app_main = str(BASE_DIR / "main.py")
         instalar_autostart_linux(app_main)
@@ -211,6 +224,8 @@ def main():
         print("  ⚠️  Sin API key de kiosko: el login/registro de estudiantes fallará (401) hasta que la configures en config.ini")
     if not admin_pin_hash:
         print("  ⚠️  Sin PIN de administrador: 'Salir (admin)' quedará bloqueado hasta que configures [admin] pin_hash en config.ini")
+    if args.sin_autostart:
+        return
     print("\nEjecutar, en este orden y desde cliente/:")
     print("  python -m servicio   # servicio en segundo plano (config.ini, base local, sync)")
     print("  python main.py       # interfaz del kiosko")

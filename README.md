@@ -143,7 +143,7 @@ Loguea todo en `sync.log`. Expone `forzar_sync()`, invocado tras login, logout o
 ## Configuración
 
 ### `setup.py` — configuración inicial (una vez por PC)
-Pide nombre de PC (default `PC-01`), URL del servidor (default `http://localhost:8000`), genera (o reutiliza) el `PC_ID` de esta PC y lo muestra en pantalla, pide la API key de esta PC (`KIOSK_API_KEY`, generada desde el panel admin del servidor para ese `PC_ID` puntual — pestaña "PCs", botón "Generar API key"; se ve una sola vez ahí) y un PIN de administrador para "Salir (admin)" (se pide oculto con `getpass` y se guarda como hash SHA-256, nunca en texto plano); escribe `config.ini`, inicializa la base de datos local, y ofrece instalar el autostart. Si se deja el PIN vacío, avisa que la salida administrativa quedará bloqueada hasta configurarlo.
+Pide nombre de PC (default `PC-01`), URL del servidor (default `http://localhost:8000`), genera (o reutiliza) el `PC_ID` de esta PC y lo muestra en pantalla, pide la API key de esta PC (`KIOSK_API_KEY`, generada desde el panel admin del servidor para ese `PC_ID` puntual — pestaña "PCs", botón "Generar API key"; se ve una sola vez ahí) y un PIN de administrador para "Salir (admin)" (se pide oculto con `getpass` y se guarda como hash SHA-256, nunca en texto plano); escribe `config.ini` e inicializa la base de datos local. Corrido a mano (desarrollo) ofrece instalar un autostart de usuario; en producción lo ejecuta `autostart/instalar_linux.sh` como el usuario del servicio, con `--sin-autostart`. Si se deja el PIN vacío, avisa que la salida administrativa quedará bloqueada hasta configurarlo.
 
 ```bash
 cd cliente
@@ -174,7 +174,7 @@ Fuera de `config.ini`, porque también las necesita la UI o se leen antes que é
 
 | Variable de entorno | Uso | Default |
 |---|---|---|
-| `BIBLIOTECA_DATA_DIR` | Directorio de `config.ini`, `.pc_id`, `db_key.bin`, `biblioteca_local.db` y los logs del servicio | junto al código (`cliente/`) |
+| `BIBLIOTECA_DATA_DIR` | Directorio de `config.ini`, `.pc_id`, `db_key.bin`, `biblioteca_local.db` y los logs del servicio | junto al código (`cliente/`); `/var/lib/biblioteca-kiosko` con `instalar_linux.sh` |
 | `BIBLIOTECA_SOCKET` | Ruta del socket UI ↔ servicio (la misma en los dos procesos) | ver **Separación entre la UI y el servicio** |
 | `BIBLIOTECA_UI_LOG` | Archivo de log opcional de la UI | sin archivo (solo stderr) |
 
@@ -182,11 +182,13 @@ Fuera de `config.ini`, porque también las necesita la UI o se leen antes que é
 
 `config.ini` y `.pc_id` están en `.gitignore` (son específicos de cada máquina) — se generan con `setup.py`.
 
-## Instalación como autostart en Linux (`cliente/autostart/`)
+## Instalación en Linux (`cliente/autostart/`)
 
-- **`instalar_linux.sh`**: crea un `.desktop` en `~/.config/autostart/` para arrancar la app al iniciar sesión gráfica. Opcionalmente, con confirmación, instala también un servicio `systemd` (`biblioteca-kiosko.service`, `Restart=always`, con `DISPLAY`/`XAUTHORITY` configurados para acceso gráfico) habilitado con `systemctl enable`.
-- **`desinstalar_linux.sh`**: mata cualquier proceso en ejecución de la app, elimina el `.desktop` de autostart y (si existe) el servicio systemd, limpia `__pycache__`/`sync.log`/`hardware.log`, y pregunta si además borrar `config.ini`/`.pc_id` (para reconfigurar desde cero) y/o `biblioteca_local.db` (advirtiendo sobre posibles sesiones no sincronizadas).
-- **`actualizar_linux.sh`**: valida que no haya cambios sin commit, hace `git fetch` + `git merge --ff-only`, reinstala dependencias (maneja el caso PEP 668 "externally-managed-environment" con `--break-system-packages`, justificado porque la PC es de uso dedicado), y reinicia el servicio systemd si está habilitado (o avisa reabrir manualmente / que el cambio aplicará en el próximo arranque).
+- **`instalar_linux.sh`** (`sudo ./instalar_linux.sh --usuario-ui <usuario> [--ca-cert ca.pem]`): instala el kiosko con los privilegios separados. El código va a `/opt/biblioteca-kiosko` (propiedad de root, con su propio venv), y los datos a `/var/lib/biblioteca-kiosko` (propiedad del usuario de sistema `kiosko-svc`, permisos `700`). El servicio se instala como unidad systemd con ese usuario, y su socket queda en `/run/biblioteca`, accesible solo para el grupo `kiosko-ui`. La UI va a `/etc/xdg/autostart` para las cuentas de ese grupo. Ejecuta `setup.py` como `kiosko-svc` y, opcionalmente, bloquea `file://` en los navegadores y aplica el bloqueo de escritorio. El usuario de la UI no puede tener sudo. `--solo-codigo` reinstala solo el código y las dependencias.
+- **`actualizar_linux.sh`** (sin sudo): valida que no haya cambios sin commit, hace `git fetch` + `git merge --ff-only` y, si se confirma, ejecuta `sudo ./instalar_linux.sh --solo-codigo`, que reinicia el servicio.
+- **`desinstalar_linux.sh`** (con sudo): elimina el servicio, el autostart, `/opt/biblioteca-kiosko` y las políticas del navegador. Pregunta si además borrar la configuración, la base local (advirtiendo sobre posibles sesiones no sincronizadas) y el usuario `kiosko-svc`.
+
+Detalle completo en [`docs/desarrollo/despliegue.md`](docs/desarrollo/despliegue.md).
 
 ## Detalles importantes / peculiaridades
 
