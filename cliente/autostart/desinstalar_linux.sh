@@ -14,7 +14,7 @@ TMPFILES_FILE="/etc/tmpfiles.d/$SERVICE_NAME.conf"
 SOCKET_DIR="/run/biblioteca"
 AUTOSTART_FILE="/etc/xdg/autostart/biblioteca-kiosko.desktop"
 APPS_FILE="/usr/local/share/applications/biblioteca-kiosko.desktop"
-POLITICA_FIREFOX='{"policies": {"WebsiteFilter": {"Block": ["file:///*"]}}}'
+POLITICA_FIREFOX='{"policies": {"WebsiteFilter": {"Block": ["file:///*"], "Exceptions": ["file:///home/*"]}}}'
 POLITICA_FIREFOX_FILE="/etc/firefox/policies/policies.json"
 POLITICAS_CHROME=(
     /etc/opt/chrome/policies/managed/biblioteca-kiosko.json

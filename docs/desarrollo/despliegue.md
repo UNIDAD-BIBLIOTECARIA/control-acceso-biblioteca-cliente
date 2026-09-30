@@ -69,7 +69,7 @@ Pasos:
 3. Crea `/var/lib/biblioteca-kiosko`, copia ahí el `ca.pem` si se pasó `--ca-cert` y ejecuta `setup.py --sin-autostart` como `kiosko-svc` (si ya hay `config.ini`, pregunta antes de reconfigurar). Si hay `ca.pem`, a la pregunta de la CA se responde `ca.pem`.
 4. Instala y arranca el servicio systemd.
 5. Instala el autostart de la UI y borra los `.desktop` de instalaciones anteriores en el home del usuario de la UI, porque tendrían prioridad sobre el de `/etc/xdg/autostart`.
-6. Opcional (por defecto sí): políticas de Chrome, Chromium y Firefox que bloquean `file://`.
+6. Opcional (por defecto sí): políticas de Chrome, Chromium y Firefox que bloquean `file://` fuera de `/home`. Dentro de `/home` se permite, para que el estudiante pueda abrir en el navegador lo que descargó (un PDF, por ejemplo). Lo que protege los datos del kiosko son los permisos, no esta política: aunque se la salten, `/var/lib/biblioteca-kiosko` no es legible para el estudiante.
 7. Opcional: el bloqueo de escritorio a nivel de sistema (`bloquear_sistema_linux.sh`).
 
 Hay que reiniciar la PC (o cerrar la sesión del estudiante) para que tome el grupo `kiosko-ui`. Comprobación, las dos deben fallar con `Permiso denegado`:

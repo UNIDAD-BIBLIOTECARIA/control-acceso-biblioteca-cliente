@@ -41,8 +41,11 @@ TMPFILES_FILE="/etc/tmpfiles.d/$SERVICE_NAME.conf"
 AUTOSTART_FILE="/etc/xdg/autostart/biblioteca-kiosko.desktop"
 APPS_FILE="/usr/local/share/applications/biblioteca-kiosko.desktop"
 
-POLITICA_CHROME='{"URLBlocklist": ["file://*"]}'
-POLITICA_FIREFOX='{"policies": {"WebsiteFilter": {"Block": ["file:///*"]}}}'
+# file:// bloqueado salvo dentro de /home, para que el estudiante pueda abrir
+# en el navegador lo que descargó (un PDF, por ejemplo). En Chrome la ruta de
+# URLAllowlist es un prefijo; en Firefox, un patrón con comodín.
+POLITICA_CHROME='{"URLBlocklist": ["file://*"], "URLAllowlist": ["file:///home/"]}'
+POLITICA_FIREFOX='{"policies": {"WebsiteFilter": {"Block": ["file:///*"], "Exceptions": ["file:///home/*"]}}}'
 DIRS_POLITICA_CHROME=(/etc/opt/chrome/policies/managed /etc/chromium/policies/managed)
 POLITICA_FIREFOX_FILE="/etc/firefox/policies/policies.json"
 
@@ -336,7 +339,7 @@ fi
 if [[ $SOLO_CODIGO -eq 0 ]]; then
     echo ""
     echo "=== 7/7: navegador y escritorio ==="
-    read -rp "¿Bloquear file:// en Chrome, Chromium y Firefox (políticas de sistema)? [S/n]: " resp || resp=""
+    read -rp "¿Bloquear file:// fuera de /home en Chrome, Chromium y Firefox (políticas de sistema)? [S/n]: " resp || resp=""
     if [[ "${resp,,}" != "n" ]]; then
         for d in "${DIRS_POLITICA_CHROME[@]}"; do
             install -d -m 755 "$d"
@@ -346,13 +349,13 @@ if [[ $SOLO_CODIGO -eq 0 ]]; then
         # Firefox lee un único policies.json: no se pisa uno que no sea nuestro.
         if [[ -f "$POLITICA_FIREFOX_FILE" && "$(cat "$POLITICA_FIREFOX_FILE")" != "$POLITICA_FIREFOX" ]]; then
             echo "AVISO: ya existe $POLITICA_FIREFOX_FILE con otras políticas; no se modificó."
-            echo "       Agregá a mano: \"WebsiteFilter\": {\"Block\": [\"file:///*\"]}"
+            echo "       Agregá a mano: \"WebsiteFilter\": {\"Block\": [\"file:///*\"], \"Exceptions\": [\"file:///home/*\"]}"
         else
             install -d -m 755 "$(dirname "$POLITICA_FIREFOX_FILE")"
             echo "$POLITICA_FIREFOX" > "$POLITICA_FIREFOX_FILE"
             chmod 644 "$POLITICA_FIREFOX_FILE"
         fi
-        echo "file:// bloqueado en los navegadores."
+        echo "file:// bloqueado en los navegadores fuera de /home."
     fi
 
     # Bloqueo de escritorio a nivel de sistema (dconf con locks + TTY). El
