@@ -75,7 +75,7 @@ class PantallaLogin(QWidget):
         btn_row = QHBoxLayout()
         btn_row.setSpacing(16)
 
-        btn_registrar = QPushButton("Soy nuevo — Registrarme")
+        btn_registrar = QPushButton("Registrarme")
         btn_registrar.setObjectName("btn-secundario")
         btn_registrar.clicked.connect(self.ir_registro)
         btn_row.addWidget(btn_registrar)
