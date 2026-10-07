@@ -24,6 +24,11 @@ SEDE_LA_UNION = "La Unión"
 
 SEDES = [SEDE_SAN_MIGUEL, SEDE_MORAZAN, SEDE_LA_UNION]
 
+# El servidor valida carrera y facultad contra una copia de este catálogo
+# (`servidor/models/catalogo.py` en el repo del servidor): si se agrega o
+# renombra una carrera acá, actualizar primero el servidor. Si no, rechazará
+# el registro con 422 y descartará la carrera de las sesiones de ese kiosko.
+
 # Departamento Académico -> carreras (Facultad Multidisciplinaria de Oriente, sede San Miguel)
 DEPARTAMENTOS_SAN_MIGUEL = {
     "Departamento de Ingeniería y Arquitectura": [
