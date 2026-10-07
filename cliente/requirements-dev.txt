@@ -3,4 +3,4 @@
 # `cryptography` que usa db/cifrado.py), no PyQt6, requests ni el resto de
 # la app, así que no hace falta instalar Qt en CI.
 pytest==9.1.1
-cryptography==50.0.1
+cryptography==50.0.2
