@@ -2,6 +2,15 @@
 # Descarga la última versión del repo y la instala en /opt con
 # instalar_linux.sh --solo-codigo. Se corre desde tu usuario (no con sudo):
 # el git se hace con el dueño del checkout y solo la instalación pide sudo.
+#
+# Verificación de firmas (opcional): con
+#   git config biblioteca.verificarFirmas true
+# en el checkout de la PC, solo se aplica la actualización si el commit nuevo
+# lleva una firma GPG/SSH válida de una clave en la que confía el usuario que
+# corre el script (`git verify-commit`). Así, quien tome control del remoto o
+# de la red no puede colar código en los kioscos solo con un push. Requiere
+# que el equipo firme sus commits e importar sus claves públicas en cada PC
+# (o configurar gpg.ssh.allowedSignersFile); por eso no viene activada.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -41,6 +50,14 @@ REMOTE_REV="$(git rev-parse "origin/$BRANCH")"
 if [[ "$LOCAL_REV" == "$REMOTE_REV" ]]; then
     echo "Ya está en la última versión ($LOCAL_REV)."
 else
+    if [[ "$(git config --bool --get biblioteca.verificarFirmas || echo false)" == "true" ]]; then
+        echo "Verificando la firma de $REMOTE_REV..."
+        if ! git verify-commit "$REMOTE_REV"; then
+            echo "ERROR: el commit $REMOTE_REV no tiene una firma válida de una clave de confianza."
+            echo "No se aplica la actualización."
+            exit 1
+        fi
+    fi
     echo "Aplicando actualización ($LOCAL_REV -> $REMOTE_REV)..."
     git merge --ff-only "origin/$BRANCH"
 fi
