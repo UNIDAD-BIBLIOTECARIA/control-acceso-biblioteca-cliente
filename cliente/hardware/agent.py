@@ -1,6 +1,7 @@
 import logging
 import os
 import threading
+from logging.handlers import RotatingFileHandler
 
 from core.config import HARDWARE_INTERVAL_SEGUNDOS, PC_ID, now_sv
 from core.rutas import DATA_DIR
@@ -14,7 +15,10 @@ log.setLevel(logging.INFO)
 log.propagate = False
 if not log.handlers:
     _formatter = logging.Formatter("%(asctime)s [HARDWARE] %(message)s")
-    for _handler in (logging.FileHandler(LOG_FILE, encoding="utf-8"), logging.StreamHandler()):
+    # Con rotación, como servicio.log: el servicio corre meses sin reiniciarse y un
+    # FileHandler simple crecería sin límite hasta llenar el disco del kiosko.
+    _archivo = RotatingFileHandler(LOG_FILE, maxBytes=1_000_000, backupCount=3, encoding="utf-8")
+    for _handler in (_archivo, logging.StreamHandler()):
         _handler.setFormatter(_formatter)
         log.addHandler(_handler)
     if LOG_FILE.exists():

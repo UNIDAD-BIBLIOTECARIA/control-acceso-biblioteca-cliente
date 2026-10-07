@@ -19,6 +19,7 @@ from core.estudiantes_sync import reemplazar_con_ficha_del_servidor
 from core.pin_hash import es_hash_legacy, verificar_pin
 from core.tiempo import now_sv
 from core.validacion import carnet_valido, normalizar_carnet
+from db.cifrado import seudonimo
 from db.estudiantes import buscar_estudiante_cache, guardar_estudiante_cache, guardar_estudiante_del_servidor
 from db.pin_admin import guardar_estado_pin, obtener_estado_pin
 from db.sesiones import actualizar_hora_fin, guardar_sesion
@@ -127,7 +128,7 @@ class ServicioKiosko:
         try:
             datos = self._red.obtener_estudiante(carnet)
         except ServidorNoDisponible as exc:
-            log.warning("No se pudo consultar el carnet %s en el servidor: %s", carnet, exc)
+            log.warning("No se pudo consultar el carnet %s en el servidor: %s", seudonimo(carnet), exc)
             raise ErrorOperacion("servidor_no_disponible", "no se pudo consultar el servidor") from exc
         if not datos:
             return None
@@ -137,9 +138,9 @@ class ServicioKiosko:
         carnet = _carnet(carnet)
         est = self._buscar(carnet)
         if est:
-            log.info("Carnet %s encontrado", carnet)
+            log.info("Carnet %s encontrado", seudonimo(carnet))
             return _publico(est)
-        log.info("Carnet %s no encontrado", carnet)
+        log.info("Carnet %s no encontrado", seudonimo(carnet))
         return None
 
     # ── Registro / actualización de datos ───────────────────────────────
@@ -200,7 +201,7 @@ class ServicioKiosko:
             guardar_estudiante_cache(est)
         else:
             guardar_estudiante_cache(est, sincronizado=0, pendiente_modo=modo)
-        log.info("Estudiante %s (%s): %s", carnet, modo, estado)
+        log.info("Estudiante %s (%s): %s", seudonimo(carnet), modo, estado)
 
         if modo == "actualizar":
             with self._lock:
@@ -230,7 +231,7 @@ class ServicioKiosko:
         if not self._sesion:
             return False
         actualizar_hora_fin(self._sesion["id"], now_sv().isoformat())
-        log.info("Sesión cerrada — %s", self._sesion["carnet"] or "invitado")
+        log.info("Sesión cerrada — %s", seudonimo(self._sesion["carnet"]))
         self._sesion = None
         estado_mod.set_sesion_inactiva()
         return True
@@ -272,7 +273,7 @@ class ServicioKiosko:
             # estudiante hasta que sabe que tiene la sesión abierta en esta PC.
             self._forzar_sync()
             if carnet:
-                log.info("Sesión iniciada — carnet %s", carnet)
+                log.info("Sesión iniciada — carnet %s", seudonimo(carnet))
             else:
                 log.info("Sesión iniciada — invitado (%s)", sector)
             return {

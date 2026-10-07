@@ -1,12 +1,14 @@
 import logging
 import os
 import threading
+from logging.handlers import RotatingFileHandler
 
 import core.estado as estado_mod
 from core.config import PC_ID, PC_NOMBRE, SERVER_URL, SYNC_INTERVAL
 from core.estudiantes_sync import sincronizar_pendientes
 from core.lotes_sync import enviar_por_lotes
 from core.rutas import DATA_DIR
+from db.cifrado import seudonimo
 from db.estudiantes import buscar_estudiante_cache
 from db.sesiones import marcar_rechazada, marcar_sincronizado, obtener_pendientes
 from network import estudiantes as red_estudiantes
@@ -19,7 +21,10 @@ log.setLevel(logging.INFO)
 log.propagate = False
 if not log.handlers:
     _formatter = logging.Formatter("%(asctime)s [SYNC] %(message)s")
-    for _handler in (logging.FileHandler(LOG_FILE, encoding="utf-8"), logging.StreamHandler()):
+    # Con rotación, como servicio.log: el servicio corre meses sin reiniciarse y un
+    # FileHandler simple crecería sin límite hasta llenar el disco del kiosko.
+    _archivo = RotatingFileHandler(LOG_FILE, maxBytes=1_000_000, backupCount=3, encoding="utf-8")
+    for _handler in (_archivo, logging.StreamHandler()):
         _handler.setFormatter(_formatter)
         log.addHandler(_handler)
     if LOG_FILE.exists():
@@ -35,7 +40,7 @@ def _sincronizar_estudiantes_pendientes():
     if not resultado.pendientes:
         return
     for carnet in resultado.reemplazados:
-        log.warning(f"El carnet {carnet} ya estaba registrado en el servidor; se descartan los datos locales")
+        log.warning(f"El carnet {seudonimo(carnet)} ya estaba registrado en el servidor; se descartan los datos locales")
     log.info(
         f"Estudiantes pendientes: {resultado.sincronizados}/{resultado.pendientes} sincronizados, "
         f"{len(resultado.reemplazados)} reemplazados por la ficha del servidor"

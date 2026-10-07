@@ -22,6 +22,8 @@ y se usa en `WHERE carnet = ?`; Fernet es no determinístico (mismo texto
 plano produce cifrados distintos cada vez), así que cifrarlo rompería esas
 búsquedas.
 """
+import hashlib
+import hmac
 import os
 
 from core.rutas import DATA_DIR
@@ -94,3 +96,30 @@ def descifrar_estudiante(est: dict) -> dict:
         **est,
         **{campo: descifrar_campo(est[campo]) for campo in CAMPOS_CIFRADOS if campo in est},
     }
+
+
+def seudonimo(carnet: str | None) -> str:
+    """Identificador estable de `carnet` para los logs, que no revela el carnet.
+
+    Los logs del servicio rotan y se conservan semanas; con el carnet en claro,
+    cualquier copia de esos archivos (soporte, un backup) expone quién usó qué PC
+    y cuándo. Un hash simple no sirve: el formato `AA#####` tiene pocos millones
+    de valores y se revierte por fuerza bruta en segundos. Con HMAC y la clave
+    local de `db_key.bin`, el mismo carnet da siempre el mismo seudónimo en esta
+    PC (se pueden seguir sus eventos en el log), pero sin la clave no se puede
+    revertir. Para buscar a un estudiante concreto en el log, calcular su
+    seudónimo en la misma PC con esta función."""
+    if not carnet:
+        return "invitado"
+    digest = hmac.new(_cargar_clave_cacheada(), carnet.encode("utf-8"), hashlib.sha256).hexdigest()
+    return f"est-{digest[:12]}"
+
+
+_clave_seudonimo: bytes | None = None
+
+
+def _cargar_clave_cacheada() -> bytes:
+    global _clave_seudonimo
+    if _clave_seudonimo is None:
+        _clave_seudonimo = _cargar_clave()
+    return _clave_seudonimo

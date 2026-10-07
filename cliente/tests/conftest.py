@@ -26,11 +26,12 @@ def db_temporal(tmp_path, monkeypatch):
 
     También redirige la clave de cifrado de `db/cifrado.py` (`_KEY_PATH`) a
     un archivo bajo tmp_path y resetea el `Fernet` cacheado (`_fernet_instancia`)
-    para que se regenere con esa clave — de lo contrario un test reusaría la
+    y la clave de `seudonimo` (`_clave_seudonimo`) para que se regeneren con esa clave — de lo contrario un test reusaría la
     clave real de `cliente/db_key.bin` (o la de un test anterior)."""
     ruta = tmp_path / "biblioteca_local_test.db"
     monkeypatch.setattr(db_connection, "DB_PATH", ruta)
     monkeypatch.setattr(db_cifrado, "_KEY_PATH", tmp_path / "db_key_test.bin")
     monkeypatch.setattr(db_cifrado, "_fernet_instancia", None)
+    monkeypatch.setattr(db_cifrado, "_clave_seudonimo", None)
     init_db()
     return ruta
