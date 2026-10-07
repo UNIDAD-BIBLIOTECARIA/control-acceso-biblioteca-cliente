@@ -1,4 +1,4 @@
-from db.connection import get_connection
+from db.connection import conexion
 
 
 def _migrar_carnet_nullable(conn):
@@ -44,45 +44,43 @@ def _migrar_estudiantes_pendientes(conn):
 
 
 def init_db():
-    conn = get_connection()
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS sesiones_pendientes (
-            id TEXT PRIMARY KEY,
-            pc_id TEXT NOT NULL,
-            carnet TEXT,
-            hora_inicio TEXT NOT NULL,
-            hora_fin TEXT,
-            fecha TEXT NOT NULL,
-            sincronizado INTEGER DEFAULT 0,
-            timestamp_sync TEXT
-        );
+    with conexion() as conn:
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS sesiones_pendientes (
+                id TEXT PRIMARY KEY,
+                pc_id TEXT NOT NULL,
+                carnet TEXT,
+                hora_inicio TEXT NOT NULL,
+                hora_fin TEXT,
+                fecha TEXT NOT NULL,
+                sincronizado INTEGER DEFAULT 0,
+                timestamp_sync TEXT
+            );
 
-        CREATE TABLE IF NOT EXISTS estudiantes_cache (
-            carnet TEXT PRIMARY KEY,
-            nombre TEXT NOT NULL,
-            carrera TEXT,
-            facultad TEXT,
-            fecha_nacimiento TEXT,
-            sexo TEXT,
-            sincronizado INTEGER NOT NULL DEFAULT 1,
-            pendiente_modo TEXT
-        );
+            CREATE TABLE IF NOT EXISTS estudiantes_cache (
+                carnet TEXT PRIMARY KEY,
+                nombre TEXT NOT NULL,
+                carrera TEXT,
+                facultad TEXT,
+                fecha_nacimiento TEXT,
+                sexo TEXT,
+                sincronizado INTEGER NOT NULL DEFAULT 1,
+                pendiente_modo TEXT
+            );
 
-        CREATE TABLE IF NOT EXISTS hardware_local (
-            pc_id TEXT PRIMARY KEY,
-            horas_acumuladas REAL NOT NULL DEFAULT 0,
-            ultimo_heartbeat TEXT,
-            ultimo_mantenimiento_conocido TEXT
-        );
+            CREATE TABLE IF NOT EXISTS hardware_local (
+                pc_id TEXT PRIMARY KEY,
+                horas_acumuladas REAL NOT NULL DEFAULT 0,
+                ultimo_heartbeat TEXT,
+                ultimo_mantenimiento_conocido TEXT
+            );
 
-        CREATE TABLE IF NOT EXISTS pin_admin_lockout (
-            pc_id TEXT PRIMARY KEY,
-            intentos_fallidos INTEGER NOT NULL DEFAULT 0,
-            bloqueado_hasta REAL NOT NULL DEFAULT 0
-        );
-    """)
-    conn.commit()
+            CREATE TABLE IF NOT EXISTS pin_admin_lockout (
+                pc_id TEXT PRIMARY KEY,
+                intentos_fallidos INTEGER NOT NULL DEFAULT 0,
+                bloqueado_hasta REAL NOT NULL DEFAULT 0
+            );
+        """)
 
-    _migrar_carnet_nullable(conn)
-    _migrar_estudiantes_pendientes(conn)
-    conn.close()
+        _migrar_carnet_nullable(conn)
+        _migrar_estudiantes_pendientes(conn)

@@ -1,4 +1,4 @@
-from db.connection import get_connection
+from db.connection import conexion
 
 # Valores de sesiones_pendientes.sincronizado. RECHAZADA marca una sesión que
 # el servidor rechazó por datos inválidos (422): reenviarla daría siempre el
@@ -10,24 +10,20 @@ RECHAZADA = -1
 
 
 def guardar_sesion(sesion: dict):
-    conn = get_connection()
-    conn.execute("""
-        INSERT OR REPLACE INTO sesiones_pendientes
-            (id, pc_id, carnet, hora_inicio, hora_fin, fecha, sincronizado)
-        VALUES (:id, :pc_id, :carnet, :hora_inicio, :hora_fin, :fecha, 0)
-    """, sesion)
-    conn.commit()
-    conn.close()
+    with conexion() as conn:
+        conn.execute("""
+            INSERT OR REPLACE INTO sesiones_pendientes
+                (id, pc_id, carnet, hora_inicio, hora_fin, fecha, sincronizado)
+            VALUES (:id, :pc_id, :carnet, :hora_inicio, :hora_fin, :fecha, 0)
+        """, sesion)
 
 
 def actualizar_hora_fin(sesion_id: str, hora_fin: str):
-    conn = get_connection()
-    conn.execute(
-        "UPDATE sesiones_pendientes SET hora_fin = ? WHERE id = ?",
-        (hora_fin, sesion_id)
-    )
-    conn.commit()
-    conn.close()
+    with conexion() as conn:
+        conn.execute(
+            "UPDATE sesiones_pendientes SET hora_fin = ? WHERE id = ?",
+            (hora_fin, sesion_id)
+        )
 
 
 def obtener_pendientes(limite: int | None = None) -> list:
@@ -39,9 +35,8 @@ def obtener_pendientes(limite: int | None = None) -> list:
     if limite is not None:
         sql += " LIMIT ?"
         params.append(limite)
-    conn = get_connection()
-    rows = conn.execute(sql, params).fetchall()
-    conn.close()
+    with conexion() as conn:
+        rows = conn.execute(sql, params).fetchall()
     return [dict(r) for r in rows]
 
 
@@ -50,14 +45,12 @@ def _marcar(ids: list, estado: int):
         return
     from core.tiempo import now_sv
     ahora = now_sv().isoformat()
-    conn = get_connection()
-    placeholders = ",".join("?" * len(ids))
-    conn.execute(
-        f"UPDATE sesiones_pendientes SET sincronizado=?, timestamp_sync=? WHERE id IN ({placeholders})",
-        [estado, ahora] + ids
-    )
-    conn.commit()
-    conn.close()
+    with conexion() as conn:
+        placeholders = ",".join("?" * len(ids))
+        conn.execute(
+            f"UPDATE sesiones_pendientes SET sincronizado=?, timestamp_sync=? WHERE id IN ({placeholders})",
+            [estado, ahora] + ids
+        )
 
 
 def marcar_sincronizado(ids: list):

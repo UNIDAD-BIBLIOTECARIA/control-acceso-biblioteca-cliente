@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from contextlib import contextmanager
 
 from core.rutas import DATA_DIR
 
@@ -25,3 +26,22 @@ def get_connection():
     conn.execute("PRAGMA journal_mode=WAL")
     _restringir_permisos()
     return conn
+
+
+@contextmanager
+def conexion():
+    """Conexión que se cierra siempre, también si una consulta lanza una
+    excepción: sin esto, cada error dejaba un descriptor abierto y, en modo
+    WAL, podía retener locks sobre la base mientras el servicio sigue
+    corriendo. Confirma la transacción al salir sin errores y la deshace si
+    hubo una excepción. (`with sqlite3.connect(...)` solo hace commit o
+    rollback, no cierra la conexión.)"""
+    conn = get_connection()
+    try:
+        yield conn
+        conn.commit()
+    except BaseException:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
