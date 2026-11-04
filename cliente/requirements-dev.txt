@@ -2,5 +2,5 @@
 # los tests actuales solo ejercitan db/*.py (sqlite3 + stdlib, más
 # `cryptography` que usa db/cifrado.py), no PyQt6, requests ni el resto de
 # la app, así que no hace falta instalar Qt en CI.
-pytest==9.1.1
+pytest==9.2.0
 cryptography==50.0.1
